@@ -22,6 +22,7 @@ button{font-family:inherit;cursor:pointer}
 .brand small{font-weight:500;opacity:.7;margin-left:8px;font-size:12px}
 .nav{background:none;border:none;color:#dbe5f1;font-size:13px;font-weight:600;padding:8px 12px;border-radius:7px}
 .nav:hover,.nav.on{background:rgba(255,255,255,.15);color:#fff}
+@media(max-width:560px){.top{padding:0 10px;gap:2px}.brand small{display:none}.nav{padding:8px 8px}#app{padding:18px 12px!important}}
 #app{padding:28px 20px;max-width:1280px;margin:0 auto}
 h1{font-size:22px;font-weight:800;margin-bottom:4px}
 .sub{color:var(--muted);margin-bottom:24px}
@@ -55,8 +56,16 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--acc);bac
 input[readonly]{background:#eee;color:#9ca3af}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .ln{border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:8px;background:#fcfcfc}
-.ln .r2{display:grid;grid-template-columns:1fr 64px 84px 28px;gap:6px;margin-top:6px;align-items:center}
+.cm{position:relative}
+.menu{display:none;position:absolute;left:0;right:0;top:100%;margin-top:3px;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.12);z-index:30;overflow:hidden}
+.menu.on{display:block}
+.mi{padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid #f1f2f4}
+.mi:last-child{border-bottom:none}
+.mi:hover{background:var(--acc2)}
+.mi.esc{color:var(--acc);font-weight:700}
+.ln .r2{display:grid;grid-template-columns:128px 56px 80px 28px;gap:6px;margin-top:6px;align-items:center}
 .ln .r2 input{text-align:center;padding:6px}
+.ln .r2 input[type=date]{font-size:12px;padding:5px 4px}
 .ln2{display:grid;grid-template-columns:1fr 100px 28px;gap:6px;margin-bottom:6px;align-items:center}
 .tx{display:grid;grid-template-columns:1fr 80px 28px;gap:6px;margin-bottom:6px;align-items:center}
 .rm{width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:#fff;color:var(--muted)}
@@ -74,7 +83,20 @@ table.reg th{background:#f9fafb;text-align:left;padding:10px 12px;font-size:11px
 table.reg td{padding:10px 12px;border-bottom:1px solid #f1f2f4;vertical-align:middle}
 table.reg tr:last-child td{border-bottom:none}
 table.reg .r{text-align:right;font-variant-numeric:tabular-nums}
-table.reg .acts{white-space:nowrap;text-align:right}
+table.reg .acts{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;border-bottom:none}
+table.reg tr{border-bottom:1px solid #f1f2f4}
+table.reg tr:last-child{border-bottom:none}
+table.reg td{border-bottom:none}
+@media(max-width:900px){.c-base{display:none}}
+@media(max-width:700px){
+  table.reg thead{display:none}
+  table.reg,table.reg tbody{display:block;background:none;border:none}
+  table.reg tr{display:grid;grid-template-columns:1fr auto;grid-template-areas:"num tot" "cli fecha" "acts acts";gap:2px 10px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+  table.reg td{padding:0}
+  .c-num{grid-area:num;font-size:15px}.c-tot{grid-area:tot;font-size:15px;font-weight:700}
+  .c-cli{grid-area:cli;color:var(--muted)}.c-fecha{grid-area:fecha;color:var(--muted);text-align:right}
+  table.reg .acts{grid-area:acts;justify-content:flex-start;margin-top:10px}
+}
 .scroll{overflow-x:auto}
 .sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
 .sum div{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
@@ -588,13 +610,15 @@ function importeLetras(total){var c=Math.round(Math.abs(total)*100),e=Math.floor
 
 /* ============ clientes ============ */
 var CONCEPTOS=[
-  {desc:'Atención en cirugía de varices',fixed:true},
-  {desc:'Cirugía de amputación falange + variz + angioplastia'},
-  {desc:'Cirugía arterial EVAR + angioplastia femoro-poplítea'},
-  {desc:'Atención en cirugía de variz + pseudoaneurisma femoral + angioplastia con rotarex'},
-  {desc:'Cirugía de amputación infracondílea'}
+  {desc:'Atención en cirugía arterial',price:250},
+  {desc:'Atención en cirugía de varices',price:50},
+  {desc:'Atención en cirugía vascular varios'}
 ];
-function findConcepto(d){return CONCEPTOS.filter(function(c){return c.desc===d;})[0];}
+/* fechas: se guardan como AAAA-MM-DD; las antiguas dd/mm/aa se convierten al abrir */
+function fechaISO(s){s=String(s||'').trim();if(!s||/^\d{4}-\d\d-\d\d$/.test(s))return s;
+  var m=/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/.exec(s);if(!m)return s;
+  var y=m[3].length===2?'20'+m[3]:m[3];return y+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[1]).slice(-2);}
+function fdisp(s){return /^\d{4}-\d\d-\d\d$/.test(s||'')?fmtShort(s):(s||'');}
 
 function nextNum(type){
   var d=new Date(),yr=d.getFullYear(),max=0;
@@ -620,7 +644,7 @@ var CLIENTS={
     blank:function(){var d=new Date();return {num:nextNum('vascular'),date:today(),
       desc:'Servicios de enfermería — '+MESES[d.getMonth()].replace(/^./,function(c){return c.toUpperCase();})+' '+d.getFullYear(),
       cName:'',cNif:'',cAddr:'',
-      lines:[{desc:'',fecha:'',qty:1,price:0,fixed:false}],taxes:[{label:'IRPF',pct:-15}]};},
+      lines:[{desc:'',fecha:'',qty:1,price:0,fixed:false}],taxes:[{label:'IRPF',pct:-25}]};},
     calc:calcDetalle
   },
   plastica:{
@@ -637,7 +661,7 @@ var CLIENTS={
 function prevDetalle(d){
   var k=calcDetalle(d),e=emisor,rows='';
   d.lines.forEach(function(l){var imp=r2(pn(l.qty)*pn(l.price));
-    rows+='<tr><td>'+esc(l.desc||'—')+'</td><td class="c">'+esc(l.fecha)+'</td><td class="c">'+pn(l.qty)+'</td><td class="c">'+fmt(pn(l.price))+'</td><td class="r">'+fmt(imp)+'</td></tr>';});
+    rows+='<tr><td>'+esc(l.desc||'—')+'</td><td class="c">'+esc(fdisp(l.fecha))+'</td><td class="c">'+pn(l.qty)+'</td><td class="c">'+fmt(pn(l.price))+'</td><td class="r">'+fmt(imp)+'</td></tr>';});
   var th='<div class="trow"><span>Subtotal</span><span>'+fmt(k.base)+'</span></div>';
   k.txs.forEach(function(t){var p=pn(t.pct);th+='<div class="trow '+(p<0?'neg':'pos')+'"><span>'+esc(t.label)+' ('+(p>=0?'+':'')+p+'%)</span><span>'+fmt(t.amt)+'</span></div>';});
   th+='<div class="trow fin"><span>TOTAL</span><span>'+fmt(k.tot)+'</span></div>';
@@ -687,7 +711,7 @@ function pdfDetalle(doc,d,e){
     if(y+rh>275){doc.addPage();y=22;head();}
     if(i%2===1){doc.setFillColor(250,250,250);doc.rect(M,y-4.2,W-2*M,rh,'F');}
     doc.setTextColor(51,51,51);ls.forEach(function(s,j){doc.text(s,CX.desc,y+j*4.5);});
-    doc.text(l.fecha||'',CX.fecha,y,{align:'center'});doc.text(String(pn(l.qty)),CX.qty,y,{align:'center'});
+    doc.text(fdisp(l.fecha),CX.fecha,y,{align:'center'});doc.text(String(pn(l.qty)),CX.qty,y,{align:'center'});
     doc.text(fmt(pn(l.price)),CX.price,y,{align:'right'});bold(9.5);doc.text(fmt(r2(pn(l.qty)*pn(l.price))),CX.imp,y,{align:'right'});
     doc.setDrawColor(240,240,240);doc.line(M,y-4.2+rh,W-M,y-4.2+rh);y+=rh;
   });
@@ -761,6 +785,7 @@ var prevEl,miniEl,linesBox,taxBox;
 function openEditor(type,entry,asCopy){
   var data=entry?clone(entry.data):conCliente(type,CLIENTS[type].blank());
   if(entry&&asCopy){data.num=nextNum(type);data.date=today();}
+  data.lines.forEach(function(l){l.fecha=fechaISO(l.fecha);});
   cur={type:type,id:(entry&&!asCopy)?entry.id:null,data:data};
   app.innerHTML='';setNav('menu');renderEditor();window.scrollTo(0,0);
 }
@@ -793,7 +818,6 @@ function renderEditor(){
   taxBox=h('div');
   form.appendChild(h('div',{class:'sec'},[h('div',{class:'sec-t',text:'Impuestos'}),taxBox,
     h('button',{class:'add',text:'+ Añadir impuesto',onclick:function(){d.taxes.push({label:'IVA',pct:21});drawTaxes();update();}})]));
-  var dl=h('datalist',{id:'conceptos'});CONCEPTOS.forEach(function(c){dl.appendChild(h('option',{value:c.desc}));});form.appendChild(dl);
   miniEl=h('div',{class:'mini'});form.appendChild(miniEl);
   prevEl=h('div',{class:'pv'});
   var existing=cur.id?' · editando':'';
@@ -808,17 +832,30 @@ function renderEditor(){
 function drawLines(){
   linesBox.innerHTML='';var d=cur.data;
   d.lines.forEach(function(l,i){
-      var a2=h('input',{placeholder:'Concepto o elige de la lista…',list:(cur.type==='vascular'?'conceptos':null),value:l.desc});
-      var f=h('input',{placeholder:'dd/mm/aa',value:l.fecha||''}),q=h('input',{type:'number',min:'0',value:l.qty}),
+      var vasc=cur.type==='vascular';
+      var a2=h('input',{placeholder:vasc?'Escribe o elige un concepto…':'Concepto',value:l.desc});
+      var f=h('input',{type:'date',title:'Fecha',value:fechaISO(l.fecha)||''}),q=h('input',{type:'number',min:'0',value:l.qty}),
           p=h('input',{type:'number',min:'0',step:'0.01',value:l.price});
-      function lock(){if(l.fixed){p.setAttribute('readonly','');}else p.removeAttribute('readonly');}
-      lock();
-      a2.addEventListener('input',function(){l.desc=a2.value;var c=cur.type==='vascular'?findConcepto(a2.value):null;
-        if(c&&c.fixed){l.fixed=true;l.price=50;p.value=50;}else if(l.fixed){l.fixed=false;}lock();update();});
+      a2.addEventListener('input',function(){l.desc=a2.value;update();});
       f.addEventListener('input',function(){l.fecha=f.value;update();});
       q.addEventListener('input',function(){l.qty=q.value;update();});
-      p.addEventListener('input',function(){if(!l.fixed){l.price=p.value;update();}});
-      linesBox.appendChild(h('div',{class:'ln'},[a2,h('div',{class:'r2'},[f,q,p,h('button',{class:'rm',text:'×',onclick:function(){d.lines.splice(i,1);drawLines();update();}})])]));
+      p.addEventListener('input',function(){l.price=p.value;update();});
+      var cw=h('div',{class:'cm'},[a2]);
+      if(vasc){
+        var menu=h('div',{class:'menu'});
+        var close=function(){menu.className='menu';};
+        menu.appendChild(h('div',{class:'mi esc',text:'✍️ Escribir el concepto',onmousedown:function(e){e.preventDefault();close();a2.focus();}}));
+        CONCEPTOS.forEach(function(c){
+          menu.appendChild(h('div',{class:'mi',text:c.desc,onmousedown:function(e){e.preventDefault();
+            l.desc=c.desc;a2.value=c.desc;if(c.price!=null){l.price=c.price;p.value=c.price;}close();update();}}));});
+        a2.addEventListener('focus',function(){menu.className='menu on';});
+        a2.addEventListener('click',function(){menu.className='menu on';});
+        a2.addEventListener('input',close);
+        a2.addEventListener('blur',close);
+        cw.appendChild(menu);
+      }
+      var rm=h('button',{class:'rm',text:'×',onclick:function(){d.lines.splice(i,1);drawLines();update();}});
+      linesBox.appendChild(h('div',{class:'ln'},[cw,h('div',{class:'r2'},[f,q,p,rm])]));
   });
 }
 function drawTaxes(){
@@ -887,15 +924,15 @@ function viewReg(){
   if(!list.length){app.appendChild(h('div',{class:'empty',text:registro.length?'No hay facturas con esos filtros.':'Todavía no hay facturas. Se guardan aquí solas al descargar el PDF.'}));return;}
   var tb=h('tbody');
   list.forEach(function(e){var k=entryTotals(e),C=CLIENTS[e.type];
-    tb.appendChild(h('tr',{},[h('td',{text:fmtShort(e.data.date)}),h('td',{},[h('b',{text:e.data.num})]),h('td',{text:C.icon+' '+C.label}),
-      h('td',{class:'r',text:fmt(k.base)}),h('td',{class:'r',text:fmt(k.tot)}),
+    tb.appendChild(h('tr',{},[h('td',{class:'c-fecha',text:fmtShort(e.data.date)}),h('td',{class:'c-num'},[h('b',{text:e.data.num})]),h('td',{class:'c-cli',text:C.icon+' '+C.label}),
+      h('td',{class:'r c-base',text:fmt(k.base)}),h('td',{class:'r c-tot',text:fmt(k.tot)}),
       h('td',{class:'acts'},[
-        h('button',{class:'btn sm',text:'PDF',onclick:function(){doc_(e);}}),' ',
-        h('button',{class:'btn sm',text:'Editar',onclick:function(){openEditor(e.type,e,false);}}),' ',
-        h('button',{class:'btn sm',text:'Duplicar',onclick:function(){openEditor(e.type,e,true);}}),' ',
+        h('button',{class:'btn sm',text:'PDF',onclick:function(){doc_(e);}}),
+        h('button',{class:'btn sm',text:'Editar',onclick:function(){openEditor(e.type,e,false);}}),
+        h('button',{class:'btn sm',text:'Duplicar',onclick:function(){openEditor(e.type,e,true);}}),
         h('button',{class:'btn sm del',text:'Eliminar',onclick:function(){
           if(confirm('¿Eliminar la factura '+e.data.num+' del registro? No se puede deshacer.')){registro=registro.filter(function(x){return x.id!==e.id;});saveReg();go('reg');toast('Factura eliminada');}}})])]));});
-  app.appendChild(h('div',{class:'scroll'},[h('table',{class:'reg'},[h('thead',{},[h('tr',{},[h('th',{text:'Fecha'}),h('th',{text:'Nº'}),h('th',{text:'Cliente'}),h('th',{class:'r',text:'Base'}),h('th',{class:'r',text:'Total'}),h('th',{text:''})])]),tb])]));
+  app.appendChild(h('div',{class:'scroll'},[h('table',{class:'reg'},[h('thead',{},[h('tr',{},[h('th',{text:'Fecha'}),h('th',{text:'Nº'}),h('th',{text:'Cliente'}),h('th',{class:'r c-base',text:'Base'}),h('th',{class:'r c-tot',text:'Total'}),h('th',{text:''})])]),tb])]));
 }
 function doc_(e){if(!window.jspdf){toast('No se ha cargado el generador de PDF');return;}makePdf(e.type,e.data).save(fileName(e.type,e.data));}
 function exportar(){
